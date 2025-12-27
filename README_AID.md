@@ -20,12 +20,15 @@
 
 **使用方法：**
 ```bash
-# 编译工具
-go build -o fetch_aids fetch_aids.go
+# 方法1: 直接运行（推荐）
+go run fetch_aids.go update
 
-# 运行更新（需要先在代码中配置AID数据源URL）
+# 方法2: 先编译再运行
+go build -o fetch_aids fetch_aids.go
 ./fetch_aids update
 ```
+
+**注意：** `fetch_aids.go` 使用了构建标签 `// +build ignore`，所以在运行主程序 `go run .` 时不会包含它，避免 `main` 函数冲突。
 
 **配置AID数据源：**
 编辑 `fetch_aids.go`，在 `aidSources` 数组中添加AID数据源URL：
@@ -192,7 +195,63 @@ lpac version            # 查看版本
 1. 打开 EasyLPAC 应用程序
 2. 在"设置"标签页中，点击"测试 AID"按钮
 3. 应用程序会自动测试 `aid.txt` 中的所有 AID，找到能成功读取卡片的 AID
+   - **eUICC 卡**：会优先测试以 `A000000559` 开头的 AID
+   - **传统 SIM 卡**（移动/联通/电信）：会测试以 `A000000087`（USIM）或 `A000000003`（SIM）开头的 AID
+   - **STK (SIM Tool Kit) 程序**：会测试以 `A000000087` 开头的 STK 相关 AID
 4. 找到后会自动设置并显示成功消息
+
+**注意：** EasyLPAC 支持 eUICC 卡和传统 SIM 卡，会自动测试所有类型的 AID。
+
+**读取 STK (SIM Tool Kit) 程序：**
+
+STK (SIM Tool Kit) 是 GSM 系统的一个标准，允许 SIM 卡发起各类增值服务操作。STK 由一组编程到 SIM 卡中的命令组成，这些命令定义了 SIM 卡如何直接与外界交互。
+
+**Android STK 应用：**
+- Android 平台上的 STK 应用源代码可在 [AOSP](https://android.googlesource.com/platform/packages/apps/Stk.git) 中找到
+- 该仓库包含了 Android 系统中 STK 应用的实现，提供了与 SIM 卡工具包交互的功能
+
+**读取现有 STK 程序代码：**
+
+1. **使用 Python 脚本（推荐，功能最全）：**
+   ```bash
+   # 安装依赖
+   pip install pyscard
+   
+   # 运行脚本读取 STK 应用程序
+   python3 read_stk_applet.py
+   ```
+   功能：
+   - 枚举卡片上的所有应用程序
+   - 读取应用程序的初始响应数据
+   - 读取应用程序相关的文件
+   - 使用 GET DATA 命令获取应用信息
+
+2. **使用 OpenSC 脚本：**
+   ```bash
+   # 使用 OpenSC 工具读取
+   ./read_stk_opensc.sh
+   ```
+   功能：
+   - 列出卡片上的文件
+   - 读取应用目录文件 (EF_DIR)
+   - 尝试选择并读取 STK 应用
+
+3. **使用测试脚本：**
+   ```bash
+   # 测试 STK 相关的 AID
+   ./read_stk.sh
+   ```
+
+4. **使用 EasyLPAC 应用程序：**
+   - 在"设置"标签页中，点击"测试 AID"按钮
+   - 应用程序会自动测试包括 STK 在内的所有 AID
+   - 找到有效的 STK AID 后会自动设置
+
+**注意：**
+- STK 应用程序通常使用以 `A000000087` 开头的 AID
+- 不同运营商和 SIM 卡的 STK AID 可能不同
+- 读取的应用数据通常是编译后的二进制格式（CAP 文件），不是源代码
+- 某些数据可能需要认证才能读取
 
 **注意：** 
 - macOS 上 Homebrew 没有 `pcsc-tools` 包
@@ -226,11 +285,22 @@ cat aid1.txt aid2.txt aid3.txt | sort | uniq > aid_merged.txt
 
 ### 常见AID前缀
 - `A000000559`: eUICC相关（ISD-R）
-- `A000000087`: 3GPP USIM应用
+- `A000000087`: 3GPP USIM应用（包括 STK/SIM Tool Kit）
 - `A000000003`: Visa支付
 - `A000000004`: MasterCard支付
 - `A000000025`: American Express
 - `A000000065`: JCB支付
+
+### STK (SIM Tool Kit) AID
+STK 应用程序通常使用以下 AID 格式：
+- `A0000000871004FF86FF4989`: ISIM/STK
+- `A0000000871002FF86FF4989`: USIM/STK
+- `A0000000871004`: ISIM 基础
+- `A0000000871002`: USIM 基础
+
+**参考资源：**
+- [Android STK 应用源代码](https://android.googlesource.com/platform/packages/apps/Stk.git) - AOSP 中的 STK 应用实现
+- [SIM Tool Kit - Wikipedia](https://zh.wikipedia.org/wiki/SIM%E5%8D%A1%E5%B7%A5%E5%85%B7%E5%8C%85) - STK 标准说明
 
 ## 注意事项
 
@@ -238,6 +308,17 @@ cat aid1.txt aid2.txt aid3.txt | sort | uniq > aid_merged.txt
 2. **验证**: 添加AID前，确保格式正确（有效的十六进制字符串）
 3. **备份**: 更新前建议备份现有 `aid.txt` 文件
 4. **测试**: 添加新AID后，使用"测试AID"功能验证是否有效
+
+## STK 程序开发
+
+如果您需要开发并写入 STK 程序到 SIM 卡，请参考：
+
+- **[STK_DEVELOPMENT.md](./STK_DEVELOPMENT.md)** - STK 程序开发完整指南
+
+**重要提示：**
+- EasyLPAC/lpac 主要用于 eUICC 卡管理，**不支持直接编写 STK 到传统 SIM 卡**
+- 编写 STK 到 SIM 卡需要专门的工具和权限（如 ADM 密钥）
+- 推荐使用开发卡进行 STK 开发和测试
 
 ## 贡献
 
