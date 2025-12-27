@@ -51,12 +51,25 @@ label:
   aid_5ber_button: 5ber
   aid_esimme_button: eSIM.me
   aid_xesim_button: Xesim
+  aid_select_from_list_button: Select from List
+  aid_search_placeholder: Search AID or description...
+  aid_list_dialog_title: AID List
+  aid_auto_select_button: Auto Select
+  aid_test_button: Test AID
+  aid_euicc_tag: [eUICC]
+  aid_select_button: Select
   lpac_isdr_aid: lpac ISD-R AID
   lpac_debug_output: lpac debug output
   enable_env_LIBEUICC_DEBUG_HTTP_check: Enable env LIBEUICC_DEBUG_HTTP
   enable_env_LIBEUICC_DEBUG_APDU_check: Enable env LIBEUICC_DEBUG_APDU
   easylpac_settings: EasyLPAC settings
   auto_process_notification_check: Auto process notification
+  language_settings: Language Settings
+  language: Language
+  language_auto: Auto (System Language)
+  language_en: English
+  language_zh_tw: Traditional Chinese
+  language_ja_jp: Japanese
   version: "Version:"
   euicc_data: "eUICC Data:"
   smdp_entry_placeholder: Leave it empty to use default SM-DP+
@@ -106,6 +119,11 @@ dialog:
   lpac_error: lpac error
   error: Error
   info: Info
+  aid_list: AID List
+  select: Select
+  aid_test: Test AID
+  aid_test_success: Test Success
+  aid_test_failed: Test Failed
 
 message:
   lpac_not_found: lpac not found
@@ -135,6 +153,10 @@ message:
   refresh_required: Please refresh before proceeding.
   failed_to_decode_euiccinfo2: "chip Info: failed to decode EUICCInfo2"
   qr_code_format_error: failed to decode LPA Activation Code from QR Code
+  aid_testing: Testing AID...
+  aid_testing_progress: "Progress: %d/%d\nCurrent AID: %s"
+  aid_test_found: "Found working AID:\n%s\n%s"
+  aid_test_not_found: No working AID found. Please check card reader connection or card status.
 
 thanks_to: "# Thanks to\n\n[lpac](https://github.com/estkme-group/lpac) C-based eUICC LPA\n\n[eUICC Manual](https://euicc-manual.osmocom.org) eUICC Developer Manual\n\n[fyne](https://github.com/fyne-io/fyne) Material Design GUI toolkit"
 about: "# EasyLPAC\n\nlpac GUI Frontend\n\n[Github](https://github.com/creamlike1024/EasyLPAC) Repo "

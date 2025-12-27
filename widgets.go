@@ -57,6 +57,7 @@ var SettingsTab *container.TabItem
 var AboutTab *container.TabItem
 
 var LpacVersionLabel *widget.Label
+var LanguageSelect *widget.Select
 
 type ReadOnlyEntry struct{ widget.Entry }
 

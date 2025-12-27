@@ -87,7 +87,15 @@ type ApduDriver struct {
 	Name string `json:"name"`
 }
 
+// AidItem 表示AID列表中的一项
+type AidItem struct {
+	AID     string // AID值（32位十六进制字符串）
+	Description string // AID描述
+	IsEuicc bool   // 是否为eUICC相关AID（以A000000559开头）
+}
+
 var Profiles []*Profile
 var Notifications []*Notification
 var ChipInfo *EuiccInfo
 var ApduDrivers []*ApduDriver
+var AidList []*AidItem // AID列表

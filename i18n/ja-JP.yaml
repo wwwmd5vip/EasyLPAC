@@ -51,12 +51,25 @@ label:
   aid_5ber_button: 5ber
   aid_esimme_button: eSIM.me
   aid_xesim_button: Xesim
+  aid_select_from_list_button: リストから選択
+  aid_search_placeholder: AID または説明を検索...
+  aid_list_dialog_title: AID リスト
+  aid_auto_select_button: 自動選択
+  aid_test_button: AID をテスト
+  aid_euicc_tag: [eUICC]
+  aid_select_button: 選択
   lpac_isdr_aid: lpac ISD-R AID
   lpac_debug_output: lpac デバッグ出力
   enable_env_LIBEUICC_DEBUG_HTTP_check: LIBEUICC_DEBUG_HTTP を有効化する
   enable_env_LIBEUICC_DEBUG_APDU_check: LIBEUICC_DEBUG_APDU を有効化する
   easylpac_settings: EasyLPAC の設定
   auto_process_notification_check: 通知を自動で処理する
+  language_settings: 言語設定
+  language: 言語
+  language_auto: 自動（システム言語）
+  language_en: English
+  language_zh_tw: 繁体中国語
+  language_ja_jp: 日本語
   version: "バージョン:"
   euicc_data: "eUICC データ:"
   smdp_entry_placeholder: 既定の SM-DP+ を使用するには空白のままにしてください
@@ -106,6 +119,11 @@ dialog:
   lpac_error: lpac エラー
   error: エラー
   info: 情報
+  aid_list: AID リスト
+  select: 選択
+  aid_test: AID をテスト
+  aid_test_success: テスト成功
+  aid_test_failed: テスト失敗
 
 message:
   lpac_not_found: lpac がありません
@@ -135,6 +153,10 @@ message:
   refresh_required: 続行する前に更新してください。
   failed_to_decode_euiccinfo2: "チップ情報: EUICCInfo2 のデコードに失敗しました"
   qr_code_format_error: QR コードから LPA アクティベーションコードのデコードに失敗しました
+  aid_testing: AID をテスト中...
+  aid_testing_progress: "進捗: %d/%d\n現在の AID: %s"
+  aid_test_found: "有効な AID が見つかりました:\n%s\n%s"
+  aid_test_not_found: カードを正常に読み取れる AID が見つかりませんでした。カードリーダーの接続またはカードの状態を確認してください。
 
 thanks_to: "# 謝辞:\n\n[lpac](https://github.com/estkme-group/lpac) C 言語ベースの eUICC LPA\n\n[eUICC マニュアル](https://euicc-manual.osmocom.org) eUICC 開発者マニュアル\n\n[fyne](https://github.com/fyne-io/fyne) Material デザイン GUI ツールキット"
 about: "# EasyLPAC\n\nlpac GUI フロントエンド\n\n[GitHub](https://github.com/creamlike1024/EasyLPAC) リポジトリ"

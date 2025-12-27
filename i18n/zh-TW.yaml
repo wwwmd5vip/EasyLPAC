@@ -51,12 +51,25 @@ label:
   aid_5ber_button: 5ber
   aid_esimme_button: eSIM.me
   aid_xesim_button: Xesim
+  aid_select_from_list_button: 從列表選擇
+  aid_search_placeholder: 搜尋AID或描述...
+  aid_list_dialog_title: AID列表
+  aid_auto_select_button: 自動選擇
+  aid_test_button: 測試AID
+  aid_euicc_tag: [eUICC]
+  aid_select_button: 選擇
   lpac_isdr_aid: lpac ISD-R AID
   lpac_debug_output: lpac 除錯輸出
   enable_env_LIBEUICC_DEBUG_HTTP_check: 啟用 LIBEUICC_DEBUG_HTTP 環境
   enable_env_LIBEUICC_DEBUG_APDU_check: 啟用 LIBEUICC_DEBUG_APDU 環境
   easylpac_settings: EasyLPAC 設定
   auto_process_notification_check: 自動處理通知
+  language_settings: 語言設定
+  language: 語言
+  language_auto: 自動（系統語言）
+  language_en: English
+  language_zh_tw: 繁體中文
+  language_ja_jp: 日本語
   version: "版本:"
   euicc_data: "eUICC 資料:"
   smdp_entry_placeholder: 留空則使用預設 SM-DP+
@@ -106,6 +119,11 @@ dialog:
   lpac_error: lpac 錯誤
   error: 錯誤
   info: 資訊
+  aid_list: AID列表
+  select: 選擇
+  aid_test: 測試AID
+  aid_test_success: 測試成功
+  aid_test_failed: 測試失敗
 
 message:
   lpac_not_found: 找不到 lpac
@@ -135,6 +153,10 @@ message:
   refresh_required: 請重新整理新再繼續。
   failed_to_decode_euiccinfo2: "晶片資訊: 無法解碼 EUICCInfo2 資訊"
   qr_code_format_error: 無法從二維碼解碼 LPA 啟動碼
+  aid_testing: 正在測試AID...
+  aid_testing_progress: "測試進度: %d/%d\n當前AID: %s"
+  aid_test_found: "找到有效的AID:\n%s\n%s"
+  aid_test_not_found: 未找到能成功讀取卡片的AID。請檢查讀卡器連接或卡片狀態。
 
 thanks_to: "# 銘謝\n\n[lpac](https://github.com/estkme-group/lpac) 基於C語言的 eUICC 本機設定檔助理\n\n[eUICC Manual](https://euicc-manual.osmocom.org) eUICC 開發者手冊\n\n[fyne](https://github.com/fyne-io/fyne) Material Design 圖形化工具包"
 about: "# EasyLPAC\n\nlpac 圖形化前端\n\n[Github](https://github.com/creamlike1024/EasyLPAC) 專案 "

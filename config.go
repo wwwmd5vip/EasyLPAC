@@ -24,6 +24,7 @@ type Config struct {
 	LogFilename string
 	LogFile     *os.File
 	AutoMode    bool
+	Language    string // 语言设置，如 "en", "zh-TW", "ja-JP"
 }
 
 var ConfigInstance Config
@@ -57,6 +58,7 @@ func LoadConfig() error {
 	}
 	ConfigInstance.AutoMode = true
 	ConfigInstance.LpacAID = AID_DEFAULT
+	ConfigInstance.Language = "" // 空值表示使用系统默认语言
 
 	ConfigInstance.LogFilename = fmt.Sprintf("lpac-%s.txt", time.Now().Format("20060102-150405"))
 	return nil
