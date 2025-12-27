@@ -57,6 +57,7 @@ label:
   aid_auto_select_button: 自動選擇
   aid_test_button: 測試AID
   aid_euicc_tag: [eUICC]
+  aid_filter_euicc_only: 只顯示 eUICC 相關 AID
   aid_select_button: 選擇
   lpac_isdr_aid: lpac ISD-R AID
   lpac_debug_output: lpac 除錯輸出
@@ -154,7 +155,8 @@ message:
   failed_to_decode_euiccinfo2: "晶片資訊: 無法解碼 EUICCInfo2 資訊"
   qr_code_format_error: 無法從二維碼解碼 LPA 啟動碼
   aid_testing: 正在測試AID...
-  aid_testing_progress: "測試進度: %d/%d\n當前AID: %s"
+  aid_testing_progress: "測試進度: %d/%d\n當前AID: %s\n描述: %s"
+  aid_test_cancelling: 正在取消測試...
   aid_test_found: "找到有效的AID:\n%s\n%s"
   aid_test_not_found: 未找到能成功讀取卡片的AID。請檢查讀卡器連接或卡片狀態。
 

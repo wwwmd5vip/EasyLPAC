@@ -57,6 +57,7 @@ label:
   aid_auto_select_button: Auto Select
   aid_test_button: Test AID
   aid_euicc_tag: [eUICC]
+  aid_filter_euicc_only: Show eUICC AIDs only
   aid_select_button: Select
   lpac_isdr_aid: lpac ISD-R AID
   lpac_debug_output: lpac debug output
@@ -154,7 +155,8 @@ message:
   failed_to_decode_euiccinfo2: "chip Info: failed to decode EUICCInfo2"
   qr_code_format_error: failed to decode LPA Activation Code from QR Code
   aid_testing: Testing AID...
-  aid_testing_progress: "Progress: %d/%d\nCurrent AID: %s"
+  aid_testing_progress: "Progress: %d/%d\nCurrent AID: %s\nDescription: %s"
+  aid_test_cancelling: Cancelling test...
   aid_test_found: "Found working AID:\n%s\n%s"
   aid_test_not_found: No working AID found. Please check card reader connection or card status.
 

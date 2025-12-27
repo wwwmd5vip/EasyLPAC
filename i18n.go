@@ -11,7 +11,8 @@ import (
 var i18nDir embed.FS
 var TR mf.Translator
 var LanguageTag string
-var i18nBundle *mf.Bundle
+var i18nBundle mf.Bundle
+var isRefreshingUI bool // 防止UI刷新时的递归调用
 
 func detectSystemLanguate() string {
 	tag, err := locale.Detect()
@@ -54,9 +55,14 @@ func SetLanguage(langTag string) {
 
 // RefreshAllUI 刷新所有UI文本
 func RefreshAllUI() {
-	if WMain == nil {
+	if WMain == nil || isRefreshingUI {
 		return
 	}
+	
+	isRefreshingUI = true
+	defer func() {
+		isRefreshingUI = false
+	}()
 	
 	// 刷新所有标签和按钮文本
 	StatusLabel.SetText(TR.Trans("label.status_ready"))
@@ -83,7 +89,7 @@ func RefreshAllUI() {
 	SettingsTab.Text = TR.Trans("tab_bar.settings")
 	AboutTab.Text = TR.Trans("tab_bar.about")
 	
-	// 刷新语言选择框
+	// 刷新语言选择框（需要防止递归调用）
 	if LanguageSelect != nil {
 		languageCodes := []string{"auto", "en", "zh-TW", "ja-JP"}
 		languageOptions := []string{
@@ -106,10 +112,15 @@ func RefreshAllUI() {
 			}
 		}
 		
+		// 先更新选项
 		LanguageSelect.SetOptions(languageOptions)
 		
-		// 设置当前选择（使用索引对应的选项）
-		if currentIndex >= 0 && currentIndex < len(languageOptions) {
+		// 检查当前选择是否已经是正确的，避免触发回调
+		currentSelected := LanguageSelect.Selected
+		expectedSelected := languageOptions[currentIndex]
+		
+		// 只有当选择不同时才更新，避免触发回调导致死循环
+		if currentSelected != expectedSelected && currentIndex >= 0 && currentIndex < len(languageOptions) {
 			LanguageSelect.SetSelected(languageOptions[currentIndex])
 		}
 	}

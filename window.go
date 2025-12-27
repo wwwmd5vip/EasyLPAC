@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"image/color"
 	"strings"
+	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
@@ -216,6 +217,11 @@ func InitMainWindow() fyne.Window {
 				
 				options := getLanguageOptions()
 				languageSelect := widget.NewSelect(options, func(selectedText string) {
+					// 防止在UI刷新时触发回调
+					if isRefreshingUI {
+						return
+					}
+					
 					// 根据选择的文本找到对应的索引
 					options := getLanguageOptions()
 					var selectedIndex int = -1
@@ -229,11 +235,21 @@ func InitMainWindow() fyne.Window {
 					if selectedIndex >= 0 && selectedIndex < len(languageCodes) {
 						langCode := languageCodes[selectedIndex]
 						
+						// 检查是否真的需要切换语言
+						currentCode := ConfigInstance.Language
+						if currentCode == "" {
+							currentCode = "auto"
+						}
+						if langCode == currentCode {
+							return // 已经是当前语言，不需要切换
+						}
+						
 						// 根据语言代码切换语言
 						if langCode == "auto" {
 							ConfigInstance.Language = ""
 							LanguageTag = detectSystemLanguate()
 							TR = i18nBundle.Translator(LanguageTag)
+							RefreshAllUI()
 						} else {
 							SetLanguage(langCode)
 						}
@@ -549,17 +565,9 @@ func InitAidListDialog(aidEntry *widget.Entry) dialog.Dialog {
 		}
 	}
 	
-	// 默认显示eUICC相关的AID
-	filteredList = make([]*AidItem, 0)
-	for _, item := range AidList {
-		if item.IsEuicc {
-			filteredList = append(filteredList, item)
-		}
-	}
-	// 如果没有eUICC相关的，显示所有
-	if len(filteredList) == 0 {
-		filteredList = AidList
-	}
+	// 默认显示所有AID（包括eUICC和传统SIM卡）
+	// 用户可以通过搜索框过滤，或者通过筛选选项只显示eUICC相关的
+	filteredList = AidList
 	
 	// 自动判断最佳AID
 	bestAid := FindBestAid(ConfigInstance.LpacAID, filteredList)
@@ -623,9 +631,55 @@ func InitAidListDialog(aidEntry *widget.Entry) dialog.Dialog {
 		},
 	}
 	
-	// 搜索功能
+	// 筛选选项：只显示eUICC相关的AID
+	var filterEuiccCheck *widget.Check
+	filterEuiccCheck = widget.NewCheck(TR.Trans("label.aid_filter_euicc_only"), func(checked bool) {
+		var sourceList []*AidItem
+		// 如果搜索框有内容，从搜索结果中筛选；否则从全部AID中筛选
+		if searchEntry.Text != "" {
+			sourceList = SearchAidList(searchEntry.Text, AidList)
+		} else {
+			sourceList = AidList
+		}
+		
+		if checked {
+			// 只显示eUICC相关的AID
+			filteredList = make([]*AidItem, 0)
+			for _, item := range sourceList {
+				if item.IsEuicc {
+					filteredList = append(filteredList, item)
+				}
+			}
+		} else {
+			// 显示所有AID（或搜索结果）
+			filteredList = sourceList
+		}
+		selectedAidIndex = -1
+		list.Refresh()
+	})
+	// 默认不勾选（显示所有AID）
+	filterEuiccCheck.SetChecked(false)
+	
+	// 搜索功能（需要同时考虑筛选选项）
 	searchEntry.OnChanged = func(query string) {
-		filteredList = SearchAidList(query, AidList)
+		var sourceList []*AidItem
+		if query == "" {
+			sourceList = AidList
+		} else {
+			sourceList = SearchAidList(query, AidList)
+		}
+		
+		// 如果筛选选项已勾选，只显示eUICC相关的
+		if filterEuiccCheck.Checked {
+			filteredList = make([]*AidItem, 0)
+			for _, item := range sourceList {
+				if item.IsEuicc {
+					filteredList = append(filteredList, item)
+				}
+			}
+		} else {
+			filteredList = sourceList
+		}
 		selectedAidIndex = -1
 		list.Refresh()
 	}
@@ -666,9 +720,30 @@ func InitAidListDialog(aidEntry *widget.Entry) dialog.Dialog {
 			
 			// 显示测试进度对话框
 			progressLabel := widget.NewLabel(TR.Trans("message.aid_testing"))
+			cancelTestButton := widget.NewButton(TR.Trans("dialog.cancel"), func() {})
+			
+			// 用于控制测试取消的通道和标志
+			cancelChan := make(chan bool, 1)
+			var testCancelled bool
+			
 			progressDialog := dialog.NewCustomWithoutButtons(TR.Trans("dialog.aid_test"), 
-				container.NewVBox(progressLabel), WMain)
-			progressDialog.Resize(fyne.Size{Width: 400, Height: 150})
+				container.NewVBox(
+					progressLabel,
+					container.NewCenter(cancelTestButton),
+				), WMain)
+			progressDialog.Resize(fyne.Size{Width: 450, Height: 200})
+			
+			// 取消按钮功能（需要在progressDialog定义之后）
+			cancelTestButton.OnTapped = func() {
+				testCancelled = true
+				select {
+				case cancelChan <- true:
+				default:
+				}
+				progressLabel.SetText(TR.Trans("message.aid_test_cancelling"))
+				progressDialog.Refresh()
+			}
+			
 			progressDialog.Show()
 			
 			// 在goroutine中执行测试
@@ -687,10 +762,36 @@ func InitAidListDialog(aidEntry *widget.Entry) dialog.Dialog {
 					testList = AidList
 				}
 				
-				// 测试每个AID
+				// 计算总数量（包括可能测试的其他AID）
+				totalCount := len(testList)
+				otherAidCount := 0
+				if len(testList) < len(AidList) {
+					for _, item := range AidList {
+						if !item.IsEuicc {
+							otherAidCount++
+						}
+					}
+					totalCount = len(testList) + otherAidCount
+				}
+				
+				currentIndex := 0
+				
+				// 测试每个eUICC相关的AID
 				for i, item := range testList {
+					// 检查是否已取消
+					select {
+					case <-cancelChan:
+						return
+					default:
+					}
+					
+					if testCancelled {
+						return
+					}
+					
+					currentIndex = i + 1
 					progressLabel.SetText(fmt.Sprintf(TR.Trans("message.aid_testing_progress"), 
-						i+1, len(testList), item.AID))
+						currentIndex, totalCount, item.AID, item.Description))
 					progressDialog.Refresh()
 					
 					if TestAid(item.AID) {
@@ -703,11 +804,25 @@ func InitAidListDialog(aidEntry *widget.Entry) dialog.Dialog {
 				}
 				
 				// 如果eUICC相关的都不行，测试其他AID
-				if len(testList) < len(AidList) {
+				if len(testList) < len(AidList) && !testCancelled {
+					otherIndex := 0
 					for _, item := range AidList {
+						// 检查是否已取消
+						select {
+						case <-cancelChan:
+							return
+						default:
+						}
+						
+						if testCancelled {
+							return
+						}
+						
 						if !item.IsEuicc {
+							otherIndex++
+							currentIndex = len(testList) + otherIndex
 							progressLabel.SetText(fmt.Sprintf(TR.Trans("message.aid_testing_progress"), 
-								len(testList)+1, len(AidList), item.AID))
+								currentIndex, totalCount, item.AID, item.Description))
 							progressDialog.Refresh()
 							
 							if TestAid(item.AID) {
@@ -720,9 +835,11 @@ func InitAidListDialog(aidEntry *widget.Entry) dialog.Dialog {
 					}
 				}
 				
-				// 没有找到有效的AID
-				dialog.ShowInformation(TR.Trans("dialog.aid_test_failed"),
-					TR.Trans("message.aid_test_not_found"), WMain)
+				// 如果没有取消，显示未找到的消息
+				if !testCancelled {
+					dialog.ShowInformation(TR.Trans("dialog.aid_test_failed"),
+						TR.Trans("message.aid_test_not_found"), WMain)
+				}
 			}()
 		},
 	}
@@ -757,6 +874,7 @@ func InitAidListDialog(aidEntry *widget.Entry) dialog.Dialog {
 		container.NewVBox(
 			&widget.Label{Text: TR.Trans("label.aid_list_dialog_title"), TextStyle: fyne.TextStyle{Bold: true}},
 			searchEntry,
+			filterEuiccCheck,
 		),
 		container.NewHBox(
 			autoSelectButton,
@@ -778,12 +896,22 @@ func InitAidListDialog(aidEntry *widget.Entry) dialog.Dialog {
 		Height: 500,
 	})
 	
-	// 双击选择功能（需要在对话框创建后设置）
-	list.OnDoubleTapped = func(id widget.ListItemID) {
-		if id >= 0 && id < len(filteredList) {
-			aidEntry.SetText(filteredList[id].AID)
-			d.Hide()
+	// 双击选择功能：通过快速连续选择同一项来实现
+	var lastSelectedID widget.ListItemID = -1
+	var lastSelectedTime int64 = 0
+	originalOnSelectedForDoubleClick := list.OnSelected
+	list.OnSelected = func(id widget.ListItemID) {
+		originalOnSelectedForDoubleClick(id)
+		now := time.Now().UnixNano()
+		// 如果快速连续选择同一项（500ms内），视为双击
+		if id == lastSelectedID && (now-lastSelectedTime) < 500000000 {
+			if id >= 0 && id < len(filteredList) {
+				aidEntry.SetText(filteredList[id].AID)
+				d.Hide()
+			}
 		}
+		lastSelectedID = id
+		lastSelectedTime = now
 	}
 	
 	// 取消按钮关闭对话框

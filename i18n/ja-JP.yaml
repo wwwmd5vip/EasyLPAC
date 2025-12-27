@@ -57,6 +57,7 @@ label:
   aid_auto_select_button: 自動選択
   aid_test_button: AID をテスト
   aid_euicc_tag: [eUICC]
+  aid_filter_euicc_only: eUICC 関連 AID のみ表示
   aid_select_button: 選択
   lpac_isdr_aid: lpac ISD-R AID
   lpac_debug_output: lpac デバッグ出力
@@ -154,7 +155,8 @@ message:
   failed_to_decode_euiccinfo2: "チップ情報: EUICCInfo2 のデコードに失敗しました"
   qr_code_format_error: QR コードから LPA アクティベーションコードのデコードに失敗しました
   aid_testing: AID をテスト中...
-  aid_testing_progress: "進捗: %d/%d\n現在の AID: %s"
+  aid_testing_progress: "進捗: %d/%d\n現在の AID: %s\n説明: %s"
+  aid_test_cancelling: テストをキャンセル中...
   aid_test_found: "有効な AID が見つかりました:\n%s\n%s"
   aid_test_not_found: カードを正常に読み取れる AID が見つかりませんでした。カードリーダーの接続またはカードの状態を確認してください。
 

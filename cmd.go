@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,6 +12,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"fyne.io/fyne/v2/dialog"
 	"github.com/mattn/go-runewidth"
@@ -34,7 +36,12 @@ func runLpac(args ...string) (json.RawMessage, error) {
 		return nil, err
 	}
 
-	cmd := exec.Command(lpacPath, args...)
+	// 使用context设置超时（5秒），避免命令执行时间过长（特别是AID测试时）
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	
+	// 将context关联到command
+	cmd := exec.CommandContext(ctx, lpacPath, args...)
 	HideCmdWindow(cmd)
 
 	cmd.Dir = ConfigInstance.LpacDir

@@ -1,77 +1,333 @@
-# EasyLPAC
-**Language:** [日本語](./README_ja-JP.md)
+## Usage
 
-[lpac](https://github.com/estkme-group/lpac) GUI Frontend
+In Linux, you need to install `pcscd`, `pcsclite` and `libcurl`.
 
-Download: [GitHub Release](https://github.com/creamlike1024/EasyLPAC/releases/latest)
+APDU and HTTP interfaces of lpac has several backends, you need to specify `$LPAC_APDU` and `$LPAC_HTTP` environment variables to interface library path. If not specified, it will use `pcsc` and `curl`. See also [environment variables](ENVVARS.md).
 
-Arch Linux: ![AUR package](https://img.shields.io/aur/version/easylpac) [AUR - easylpac](https://aur.archlinux.org/packages/easylpac)
- thanks to [@1ridic](https://github.com/1ridic)
+Using `at` APDU backend need access permission to serial port (normally `/dev/ttyUSBx`). On Arch Linux, you can add yourself to `uucp` group by `sudo usermod -aG uucp $USER`. On other distro, you may need to add yourself into `dialout` group. If your serial port is not `/dev/ttyUSB0`, please use `$AT_DEVICE` to specify which one you want to use.
 
-NixOS: [NUR](https://github.com/nix-community/NUR#readme) package https://github.com/nix-community/nur-combined/blob/master/repos/linyinfeng/pkgs/easylpac/default.nix
+## CLI
 
-openSUSE: https://software.opensuse.org/package/easylpac ([OBS](https://build.opensuse.org/package/show/home:Psheng/EasyLPAC))
+### Command format
 
-System requirements:
-- Windows 10+ (last version that supports Windows 7 was [0.7.7.2](https://github.com/creamlike1024/EasyLPAC/releases/tag/0.7.7.2))
-- latest macOS
-- Linux: `pcscd`, `pcsclite`, `libcurl`(for lpac) and `gtk3dialog` (for EasyLPAC). I'm not sure about dependencies.
+```plain
+lpac <subcommand> [subcommand] [parameters]
+  subcommand:
+    chip          View and manage information about your eUICC card itself
+    profile       Manage the profile of your eUICC card
+    notification  Manage notifications within your eUICC card
+    driver        View libXXXXinterface info
+  subcommand 2:
+    Please refer to the detailed instructions below
+```
 
-Currently, only APDUINTERFACE for pcsc and HTTPINTERFACE for curl are supported.
+### Return value
 
-# Usage
+The return contents of lpac instructions are all in json format, and the returns of all instructions comply with the following format.
 
-Connect your card reader before running.
+```jsonc
+{
+   "type": "lpa",
+   "payload": {
+      "code": 0,
+      "message": "success",
+      "data": {/* .... */}
+   }
+}
+```
 
-**[estk.me User](https://www.estk.me/)**: If you are using the ACR38U card reader included with estk card and are currently using **macOS 14 Sonoma**, please install the [card reader driver](https://www.acs.com.hk/en/driver/228/acr38u-nd-pocketmate-smart-card-reader-micro-usb/) first
+- `"type": "lpa"`: fixed content
+- `code`: if is 0, indicating successful execution, and other values are error codes.
+- `message`: is success if the operation is successful, or the error type is returned if an error occurs.
+- `data`: returns the returned content when the operation is successful, and is empty (but not NULL) when there is an error.
 
-## Linux
+### Subcommand
 
-lpac binary search order: First, search in the same directory as EasyLPAC. If not found, use `/usr/bin/lpac`
+#### chip
 
-`EasyLPAC-linux-x86_64-with-lpac.tar.gz` contain prebuilt lpac binary, if you can't run it, you need to install `lpac` by package manager or [compile lpac](https://github.com/estkme-group/lpac?tab=readme-ov-file#compile) by yourself.
+View the EID, default SM-DP+ server and SM-DS server of eUICC. euicc_info2 is also supported.
 
-Note: Reading LPA activation code and QRCode from clipboard not working in Wayland
+```plain
+lpac chip <subcommand> [parameters]
+  subcommand:
+    info         View information about your eUICC card itself
+    defaultsmdp  Modify the default SM-DP+ server address of your eUICC card
+                 Example: lpac chip defaultsmdp <the address of the SM-DP+ server you want to modify>
+    purge        Reset the eUICC and will clear all profiles. Use with caution!
+```
 
-## Auto process notification
-EasyLPAC will process notification for any operation and remove it after successfully processing by default.
+<details>
 
-You can go to Settings Tab and uncheck "Auto process notification" to disable this behavior.
+<summary>Return value example</summary>
 
-However, arbitrary manipulation of notifications does not comply with GSMA specifications, so manual operation is not recommended.
+```json
+{
+  "type": "lpa",
+  "payload": {
+    "code": 0,
+    "message": "success",
+    "data": {
+      "eidValue": "[EID]",
+      "EuiccConfiguredAddresses": {
+        "defaultDpAddress": null,
+        "rootDsAddress": "testrootsmds.gsma.com"
+      },
+      "EUICCInfo2": {
+        "profileVersion": "2.1.0",
+        "svn": "2.2.0",
+        "euiccFirmwareVer": "4.6.0",
+        "extCardResource": {
+          "installedApplication": 0,
+          "freeNonVolatileMemory": 291666,
+          "freeVolatileMemory": 5970
+        },
+        "uiccCapability": [
+          "usimSupport",
+          "isimSupport",
+          "csimSupport",
+          "akaMilenage",
+          "akaCave",
+          "akaTuak128",
+          "akaTuak256",
+          "gbaAuthenUsim",
+          "gbaAuthenISim",
+          "eapClient",
+          "javacard",
+          "multipleUsimSupport",
+          "multipleIsimSupport"
+        ],
+        "ts102241Version": "9.2.0",
+        "globalplatformVersion": "2.3.0",
+        "rspCapability": [
+          "additionalProfile",
+          "testProfileSupport"
+        ],
+        "euiccCiPKIdListForVerification": [
+          "81370f5125d0b1d408d4c3b232e6d25e795bebfb"
+        ],
+        "euiccCiPKIdListForSigning": [
+          "81370f5125d0b1d408d4c3b232e6d25e795bebfb"
+        ],
+        "euiccCategory": null,
+        "forbiddenProfilePolicyRules": [
+          "pprUpdateControl",
+          "ppr1"
+        ],
+        "ppVersion": "0.0.1",
+        "sasAcreditationNumber": "GI-BA-UP-0419",
+        "certificationDataObject": {
+          "platformLabel": "1.2.840.1234567/myPlatformLabel",
+          "discoveryBaseURL": "https://mycompany.com/myDLOARegistrar"
+        }
+      }
+    }
+  }
+}
+```
 
-# Screenshots
-<p>
-<a href="https://github.com/creamlike1024/EasyLPAC/blob/master/screenshots/chipinfo.png"><img src="https://github.com/creamlike1024/EasyLPAC/blob/master/screenshots/chipinfo.png?raw=true"  height="180px"/></a>
-<a href="https://github.com/creamlike1024/EasyLPAC/blob/master/screenshots/notification.png"><img src="https://github.com/creamlike1024/EasyLPAC/blob/master/screenshots/notification.png?raw=true" height="180px"/></a>
-<a href="https://github.com/creamlike1024/EasyLPAC/blob/master/screenshots/profile.png"><img src="https://github.com/creamlike1024/EasyLPAC/blob/master/screenshots/profile.png?raw=true" height="180px"/></a>
-</p>
+\* Starting from SGP.22 v2.1, `javacardVersion` is renamed to `ts102241Version` \
+\*\* SGP.22 has been a typo, `sasAcreditationNumber` should be `sasAccreditationNumber`
 
-# FAQ
+</details>
 
-## lpac error `euicc_init` when using 5ber
+#### profile
 
-Go to Settings -> lpac ISD-R AID and click 5ber to set 5ber's custom AID, then retry
+Profile management, you can list, set alias (nickname), enable, disable, delete, download and discovery Profiles.
 
-## macOS `SCardTransmit() failed: 80100016`
+```plain
+lpac profile <subcommand> [parameters]
+  subcommand:
+    list      enumerates your eUICC Profile
+    nickname  sets an alias for the specified Profile
+              Example: lpac profile nickname <ICCID of Profile> <alias>
+    enable    enables the specified Profile. The RefreshFlag status is enabled by default and can be omitted.
+              Example: lpac profile enable <ICCID/AID of Profile> [1/0]
+    disable   disables the specified Profile. The RefreshFlag state is enabled by default and can be omitted.
+              Example: lpac profile disable <ICCID/AID of Profile> [1/0]
+    delete    deletes the specified Profile
+              Example: lpac profile delete <ICCID/AID of Profile>
+    download  Download profile from SM-DP server
+    discovery Detect available profile registered on SM-DS server
+```
 
-If you are using macOS Sonoma, you may encounter this error: `SCardTransmit() failed: 80100016`
+> [!NOTE]
+> Some eUICC chips have trouble when enabling profile (e.g. These removable eUICC cards from ECP), try AID, ICCID, refreshFlag with 1 or 0 to find out the working way for these chips.
 
-This is because there is a bug in Apple's USB CCID Card Reader Driver, you can try installing the macOS driver provided by your card reader manufacturer, Or you can solve it by reading the following article:
+There is no secondary confirmation for deleting a Profile, so please perform it with caution.
+> [!NOTE]
+> This function will only delete the Profile and issue a Notification, but it will not be sent automatically. You need to send it manually.
 
-- [Apple's own CCID driver in Sonoma](https://blog.apdu.fr/posts/2023/11/apple-own-ccid-driver-in-sonoma/)
-- [macOS Sonoma bug: SCardControl() returns SCARD_E_NOT_TRANSACTED](https://blog.apdu.fr/posts/2023/09/macos-sonoma-bug-scardcontrol-returns-scard_e_not_transacted/)
+##### Download requires connection to SM-DP+ server and the following additional parameters:
 
-## `SCardEstablishContext() failed: 8010001D`
+- `-s`: SM-DP+ server, optional, if not provided, it will try to read the default sm-dp+ attribute.
+- `-m`: Matching ID, activation code. optional.
+- `-c`: Confirmation Code, optional.
+- `-i`: The IMEI of the device to which Profile is to be downloaded, optional.
+- `-a`: LPA qrcode activation code string, e.g: `LPA:1$<sm-dp+ domain>$<matching id>`, if provided, this option takes precedence over the `-s` and `-m` options, optional.
+- `-p`: Interactive preview mode, optional.
 
-This indicates that PCSC service is not running. For linux, it's `pcscd` service.
+<details>
 
-Start `pcscd` on systemd based distribution: `sudo systemctl start pcscd`
+<summary>Example</summary>
 
-## `SCardListReaders() failed: 8010002E`
+```bash
+./lpac profile download -s rsp.truphone.com -m "QR-G-5C-1LS-1W1Z9P7"
 
-Card reader is not connected.
+# LPA qrcode activation code string
+./lpac profile download -a 'LPA:1$rsp.truphone.com$QR-G-5C-1LS-1W1Z9P7'
+```
 
-## Other `SCard` error codes
+</details>
 
-For complete explanation list of PCSC error codes, see [pcsc-lite: ErrorCodes](https://pcsclite.apdu.fr/api/group__ErrorCodes.html)
+##### Discovery requires connecting to the SM-DS server to query registered profile
+
+The following parameters can be used to customize the IMEI and SM-DS server:
+
+- `-s`: SM-DS server. If not provided, it will be gsma official server "lpa.ds.gsma.com"
+- `-i`: IMEI of the device to which Profile is to be downloaded, optional
+
+<details>
+
+<summary>Return value example of lpac profile list</summary>
+
+```json
+{
+  "type": "lpa",
+  "payload": {
+    "code": 0,
+    "message": "success",
+    "data": [
+      {
+        "iccid": "89353...",
+        "isdpAid": "A0000005591010FFFFFFFF8900001000",
+        "profileState": "disabled",
+        "profileNickname": null,
+        "serviceProviderName": "Vodafone IE",
+        "profileName": "Vodafone IE eSIM",
+        "iconType": "png",
+        "icon": "iVBO...",
+        "profileClass": "operational"
+      },
+      {
+        "iccid": "89012...",
+        "isdpAid": "A0000005591010FFFFFFFF8900001100",
+        "profileState": "disabled",
+        "profileNickname": null,
+        "serviceProviderName": "T-Mobile",
+        "profileName": "CONVSIM5G_Adaptive",
+        "iconType": "png",
+        "icon": "iVBO...",
+        "profileClass": "operational"
+      },
+      {
+        "iccid": "89444...",
+        "isdpAid": "A0000005591010FFFFFFFF8900001200",
+        "profileState": "enabled",
+        "profileNickname": null,
+        "serviceProviderName": "BetterRoaming",
+        "profileName": "BetterRoaming",
+        "iconType": "none",
+        "icon": null,
+        "profileClass": "operational"
+      },
+      {
+        "iccid": "89852...",
+        "isdpAid": "A0000005591010FFFFFFFF8900001300",
+        "profileState": "disabled",
+        "profileNickname": null,
+        "serviceProviderName": "Redtea Mobile",
+        "profileName": "RedteaGO",
+        "iconType": "none",
+        "icon": null,
+        "profileClass": "operational"
+      }
+    ]
+  }
+}
+```
+
+- `iccid`: ICCID of Profile
+- `isdpAid`: Aid of Profile
+- `profileState`: State of Profile, "Enabled" or "Disabled"
+- `profileNickname`: Nickname of Profile
+- `serviceProviderName`: Telecom operators of Profile
+- `profileName`: Name of Profile
+- `iconType`: Profile icon data struct, "none", "png", "jpg"
+- `icon`: Profile icon data in base64
+- `profileClass`: Type of Profile
+
+</details>
+
+#### notification
+
+Used for the management of Notifications, which are sent by telecom operators during Profile operations. You can enumerate (list), send (process), and remove (remove) Notifications.
+
+```plain
+lpac notification <subcommand> [parameters]
+  subcommand:
+    list     Enumerates your eUICC pending Notification list
+    process  Send Notification
+             Example: lpac notification process <sequence ID>
+    remove   Remove Notification
+             Example: lpac notification remove <sequence ID>
+```
+
+> [!NOTE]
+> Downstream developers or end users should process Notification as soon as possible when they exist to comply with GSMA specifications. lpac will not automatically delete the Notification after sending it. You can pass `-r` to `notification process` or you need to delete it manually.
+
+<details>
+
+<summary>Return value example of lpac notification list</summary>
+
+```json
+{
+  "type": "lpa",
+  "payload": {
+    "code": 0,
+    "message": "success",
+    "data": [
+      {
+        "seqNumber": 178,
+        "profileManagementOperation": "install",
+        "notificationAddress": "rsp-eu.redteamobile.com",
+        "iccid": "89852..."
+      },
+      {
+        "seqNumber": 215,
+        "profileManagementOperation": "disable",
+        "notificationAddress": "cust-005-v4-prod-atl2.gdsb.net",
+        "iccid": "89012..."
+      },
+      {
+        "seqNumber": 216,
+        "profileManagementOperation": "enable",
+        "notificationAddress": "rsp.truphone.com",
+        "iccid": "89444..."
+      }
+    ]
+  }
+}
+```
+
+- `seqNumber`: Sequence ID
+- `profileManagementOperation`: Which operation generated this notification
+- `notificationAddress`: Profile's notification reporting server address
+
+</details>
+
+##### Processing requires connection to server and the following optional parameters:
+
+The following parameters can be used to customize the behavior of `notification process`:
+
+- `-a`: Process all notifications
+- `-r`: Automatically remove processed notifications
+
+##### Removing supports the following optional parameters:
+
+The following parameters can be used to customize the behavior of `notification remove`:
+
+- `-a`: Remove all notifications
+
+#### driver
+
+Now, there is only one command: `lpac driver apdu list` to get the list of card readers or AT devices (AT devices are available only on the AT backend on Windows).

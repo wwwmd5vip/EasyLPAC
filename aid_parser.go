@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -12,26 +13,40 @@ import (
 func LoadAidList() ([]*AidItem, error) {
 	var aidList []*AidItem
 	
-	// 获取可执行文件所在目录
+	// 尝试多个可能的aid.txt文件路径
+	var aidFilePath string
+	var file *os.File
+	var err error
+	
+	// 1. 尝试可执行文件所在目录
 	exePath, err := os.Executable()
-	if err != nil {
-		return nil, err
+	if err == nil {
+		exePath, err = filepath.EvalSymlinks(exePath)
+		if err == nil {
+			exeDir := filepath.Dir(exePath)
+			aidFilePath = filepath.Join(exeDir, "aid.txt")
+			file, err = os.Open(aidFilePath)
+			if err == nil {
+				defer file.Close()
+			}
+		}
 	}
-	exePath, err = filepath.EvalSymlinks(exePath)
-	if err != nil {
-		return nil, err
-	}
-	exeDir := filepath.Dir(exePath)
 	
-	// 构建aid.txt文件路径
-	aidFilePath := filepath.Join(exeDir, "aid.txt")
-	
-	// 打开文件
-	file, err := os.Open(aidFilePath)
-	if err != nil {
-		return nil, err
+	// 2. 如果找不到，尝试当前工作目录
+	if file == nil {
+		if wd, wdErr := os.Getwd(); wdErr == nil {
+			aidFilePath = filepath.Join(wd, "aid.txt")
+			file, err = os.Open(aidFilePath)
+			if err == nil {
+				defer file.Close()
+			}
+		}
 	}
-	defer file.Close()
+	
+	// 3. 如果还是找不到，返回错误
+	if file == nil {
+		return nil, fmt.Errorf("aid.txt not found in executable directory or current working directory")
+	}
 	
 	// 读取文件
 	scanner := bufio.NewScanner(file)
@@ -52,22 +67,34 @@ func LoadAidList() ([]*AidItem, error) {
 		aid := strings.TrimSpace(parts[0])
 		description := strings.TrimSpace(parts[1])
 		
-		// 只处理32位十六进制AID（去除所有非十六进制字符后长度为32）
+		// 清理AID：去除空格，转为大写
 		aidHex := strings.ToUpper(strings.ReplaceAll(aid, " ", ""))
-		if len(aidHex) != 32 {
-			// 如果不是32位，尝试补齐或跳过
-			// 对于较短的AID，可能需要补齐，但这里我们只处理32位的
-			continue
-		}
 		
 		// 验证是否为有效的十六进制字符串
 		if !isValidHex(aidHex) {
 			continue
 		}
 		
+		// AID长度必须是偶数（因为每个字节用2个十六进制字符表示）
+		if len(aidHex)%2 != 0 {
+			continue
+		}
+		
+		// 只处理长度在4-32之间的AID（2-16字节）
+		// 注意：AID长度不固定，根据ISO 7816标准，长度范围是5-16字节（10-32个十六进制字符）
+		if len(aidHex) < 4 || len(aidHex) > 32 {
+			continue
+		}
+		
 		// 判断是否为eUICC相关AID（以A000000559开头）
+		// eUICC的ISD-R AID通常是32位，但基础标识可能是10位
 		isEuicc := strings.HasPrefix(aidHex, "A000000559")
 		
+		// 保存原始AID（不补齐）
+		// 注意：不要补齐AID，因为：
+		// 1. AID长度不固定，补齐会丢失原始信息
+		// 2. 补齐后的AID可能不是有效的AID
+		// 3. lpac工具需要原始长度的AID
 		aidItem := &AidItem{
 			AID:         aidHex,
 			Description: description,
@@ -99,14 +126,29 @@ func isValidHex(s string) bool {
 func FindBestAid(currentAid string, aidList []*AidItem) *AidItem {
 	currentAid = strings.ToUpper(strings.ReplaceAll(currentAid, " ", ""))
 	
-	// 首先尝试查找完全匹配的AID
+	// 首先尝试查找完全匹配的AID（精确匹配）
 	for _, item := range aidList {
 		if item.AID == currentAid {
 			return item
 		}
 	}
 	
-	// 如果没有完全匹配，返回第一个eUICC相关的AID
+	// 如果没有完全匹配，尝试前缀匹配（例如：当前AID是32位，列表中是10位前缀）
+	// 例如：当前AID是 A0000005591010FFFFFFFF8900000100，列表中有 A000000559
+	for _, item := range aidList {
+		if strings.HasPrefix(currentAid, item.AID) || strings.HasPrefix(item.AID, currentAid) {
+			return item
+		}
+	}
+	
+	// 如果没有匹配，返回第一个eUICC相关的AID（优先32位的ISD-R AID）
+	// 优先返回32位的eUICC AID
+	for _, item := range aidList {
+		if item.IsEuicc && len(item.AID) == 32 {
+			return item
+		}
+	}
+	// 如果没有32位的，返回其他eUICC相关的AID
 	for _, item := range aidList {
 		if item.IsEuicc {
 			return item
@@ -150,20 +192,34 @@ func SearchAidList(query string, aidList []*AidItem) []*AidItem {
 
 // TestAid 测试指定的AID是否能成功读取卡片信息
 // 返回true表示AID有效，false表示无效
+// 支持eUICC卡和传统SIM卡（如移动、联通、电信的手机卡）
+// 使用轻量级测试方法提高效率：优先使用 profile list（eUICC），失败则使用 chip info（通用）
 func TestAid(aid string) bool {
 	// 保存当前AID
 	originalAid := ConfigInstance.LpacAID
 	
 	// 临时设置测试AID
 	ConfigInstance.LpacAID = aid
+	defer func() {
+		// 恢复原始AID
+		ConfigInstance.LpacAID = originalAid
+	}()
 	
-	// 尝试读取芯片信息
-	_, err := LpacChipInfo()
+	// 对于eUICC卡，优先使用更轻量的 profile list 命令来测试AID
+	// 这比 chip info 更快，因为不需要读取完整的芯片信息
+	_, err := LpacProfileList()
+	if err == nil {
+		// profile list 成功，说明AID有效（eUICC卡）
+		return true
+	}
 	
-	// 恢复原始AID
-	ConfigInstance.LpacAID = originalAid
-	
-	// 如果没有错误，说明AID有效
+	// 如果 profile list 失败，尝试使用 chip info
+	// 注意：chip info 可以用于：
+	// 1. eUICC卡（如果profile list失败但chip info成功）
+	// 2. 传统SIM卡（如移动、联通、电信的手机卡）
+	//    传统SIM卡不支持profile list，但chip info可能能够读取基本信息
+	// 注意：runLpac 已经内置了5秒超时，所以这里不需要额外超时
+	_, err = LpacChipInfo()
 	return err == nil
 }
 
@@ -199,4 +255,5 @@ func FindWorkingAid(aidList []*AidItem) *AidItem {
 	
 	return nil
 }
+
 

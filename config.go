@@ -53,8 +53,19 @@ func LoadConfig() error {
 			ConfigInstance.LpacDir = "/usr/bin"
 		}
 	default:
+		// macOS
 		ConfigInstance.EXEName = "lpac"
 		ConfigInstance.LogDir = filepath.Join("/tmp", "EasyLPAC-log")
+		// 检查可执行文件目录中是否有lpac
+		_, err = os.Stat(filepath.Join(ConfigInstance.LpacDir, ConfigInstance.EXEName))
+		if err != nil {
+			// 如果找不到，尝试当前工作目录（用于开发环境）
+			if wd, wdErr := os.Getwd(); wdErr == nil {
+				if _, wdErr := os.Stat(filepath.Join(wd, ConfigInstance.EXEName)); wdErr == nil {
+					ConfigInstance.LpacDir = wd
+				}
+			}
+		}
 	}
 	ConfigInstance.AutoMode = true
 	ConfigInstance.LpacAID = AID_DEFAULT
